@@ -7,7 +7,8 @@
 # MAGIC regular 5-minute grid, then pivots wide and writes a Delta table.
 # MAGIC
 # MAGIC **Coverage**: Nov 2019 – Apr 2021
-# MAGIC **Tags ingested**: 3 surface flow (SLT), 8 downhole pressure (SLB), 8 downhole temperature (SLB)
+# MAGIC **Tags ingested**: 3 surface flow (SLT), 8 downhole pressure (SLB), 8 downhole temperature (SLB),
+# MAGIC 2 topside speed transmitters (SLT G-21 SIT), up to 8 topside vibration transmitters (SLT G-21 ZIT)
 
 # COMMAND ----------
 
@@ -47,6 +48,7 @@ PI_SCHEMA = StructType([
 # MAGIC - **Surface HC flow** (primary label source + correlated flows)
 # MAGIC - **Downhole pressure** (early indicator of reservoir/wellbore changes)
 # MAGIC - **Downhole temperature** (thermal signature of flow regime changes)
+# MAGIC - **Topside machinery** (G-21 pump/compressor speed and bearing vibration — independent leading indicators)
 # MAGIC
 # MAGIC Each entry is (tag_name, volume_sub_path).
 
@@ -85,6 +87,21 @@ TAGS = {
     "alarm_critical":  "1163-GDR/B00.Alarm.CriticalActiveCount",
     "alarm_p20":       "1163-GDR/P-20-B03.Alarm.ActiveCount",
     "alarm_p21":       "1163-GDR/P-21-B02.Alarm.ActiveCount",
+
+    # ── Topside machinery — G-21 rotating equipment (SLT) ────────────────────
+    # Speed transmitters (SIT): pump/compressor RPM for two parallel trains
+    "mach_spd_g21a":  "1141-SLT/G-21-SIT__187_",
+    "mach_spd_g21b":  "1141-SLT/G-21-SIT__287_",
+    # Vibration transmitters (ZIT): shaft/bearing displacement, both trains
+    # Tags that don't exist in the Volume will be skipped by the error handler below
+    "mach_vib_183":   "1141-SLT/G-21-ZIT__183_",
+    "mach_vib_186":   "1141-SLT/G-21-ZIT__186_",
+    "mach_vib_190":   "1141-SLT/G-21-ZIT__190_",
+    "mach_vib_191":   "1141-SLT/G-21-ZIT__191_",
+    "mach_vib_283":   "1141-SLT/G-21-ZIT__283_",
+    "mach_vib_286":   "1141-SLT/G-21-ZIT__286_",
+    "mach_vib_290":   "1141-SLT/G-21-ZIT__290_",
+    "mach_vib_291":   "1141-SLT/G-21-ZIT__291_",
 }
 
 # COMMAND ----------
@@ -255,7 +272,9 @@ SELECT
   flow_hc_914,
   flow_hc_944,
   alarm_active,
-  alarm_critical
+  alarm_critical,
+  mach_spd_g21a,
+  mach_vib_183
 FROM {OUTPUT_TABLE}
 WHERE ts BETWEEN '2020-03-04' AND '2020-03-10'
 ORDER BY ts

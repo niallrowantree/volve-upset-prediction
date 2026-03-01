@@ -6,9 +6,9 @@
 # MAGIC # Volve PI Historian — Notebook 04: Train, Evaluate & Explain
 # MAGIC
 # MAGIC Trains an XGBoost classifier to predict production upsets from PI sensor features.
-# MAGIC Features are restricted to **independent signals only** (downhole PT/TT, water flow,
-# MAGIC secondary flow meters, calendar) — the primary HC flow tag (FE-315) and all derived
-# MAGIC features are excluded to avoid circular label leakage.
+# MAGIC Features are restricted to **independent signals only** (downhole PT/TT, topside
+# MAGIC machinery speed/vibration, calendar) — all surface flow meters (FE-315/914/944) and
+# MAGIC derived surface-flow features are excluded to avoid circular label leakage.
 # MAGIC
 # MAGIC **Train period**: Nov 2019 – Dec 2020
 # MAGIC **Test period**:  Jan 2021 – Apr 2021
@@ -59,13 +59,9 @@ df = spark.table(FEATURE_TABLE)
 # Columns that are not features
 NON_FEATURE_COLS = {"ts", "is_upset", "upset_4h", "upset_12h", "upset_24h", "baseline_7d"}
 
-# Exclude features derived from the label tag (flow_hc_315) and flow_vs_baseline
-# — these create circularity: the model learns "upsets continue" not "upsets are coming"
-# — also exclude flow_hc_315_corr (same meter) and flow_imbalance (uses 315)
-# Keep: downhole PT/TT, water flow, secondary flow meters (914, 944), calendar, quality
 # Exclude ALL surface flow signals — they all drop simultaneously during an upset
-# so any of them just tells the model "an upset is already happening"
-# Keep only: downhole PT/TT, dhp_spread, sensor quality, calendar
+# so any of them just tells the model "an upset is already happening".
+# Keep: downhole PT/TT, topside machinery (mach_*), dhp_spread, sensor quality, calendar
 CIRCULAR_PREFIXES = (
     "flow_hc_315",      # primary label tag and all derived features
     "flow_hc_315_corr", # corrected mass from same meter

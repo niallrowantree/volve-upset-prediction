@@ -6,11 +6,13 @@
 # MAGIC
 # MAGIC **Strategy**: A period is labelled an upset when the flow rate drops >20% relative
 # MAGIC to a 7-day rolling baseline.  We create three forward-looking binary labels:
-# MAGIC - `upset_4h`  — will an upset occur in the next 4 hours?
-# MAGIC - `upset_12h` — will an upset occur in the next 12 hours?
-# MAGIC - `upset_24h` — will an upset occur in the next 24 hours?
+# MAGIC - `upset_4h`  — will an upset occur in the 2h–6h ahead window?
+# MAGIC - `upset_12h` — will an upset occur in the 2h–14h ahead window?
+# MAGIC - `upset_24h` — will an upset occur in the 2h–26h ahead window?
 # MAGIC
-# MAGIC This framing lets us ask "how far ahead can we predict?"
+# MAGIC **Minimum lead time (MIN_LEAD_STEPS)**: Labels look forward from t+2h, not t+0.
+# MAGIC This prevents the model from simply detecting an already-in-progress upset and
+# MAGIC forces it to identify genuine precursor signals with at least 2 hours of warning.
 
 # COMMAND ----------
 
@@ -22,11 +24,17 @@ DROP_THRESHOLD_PCT = 0.20   # flow must fall >20% below 7-day rolling baseline
 BASELINE_WINDOW_HOURS = 7 * 24  # 7 days in hours
 MIN_BASELINE_HOURS = 24         # need at least 24h of data before labelling starts
 
-# Forward-look windows (in 5-min steps)
+# Minimum lead time: labels start this many steps AHEAD of t+0.
+# Prevents the model from detecting already-in-progress upsets instead of predicting them.
+# 24 steps = 2 hours at 5-min resolution — minimum operational response window.
+MIN_LEAD_STEPS = 24   # 2 hours
+
+# Forward-look windows (in 5-min steps, AFTER the minimum lead time).
+# e.g. upset_12h = upset in [t + 2h, t + 14h]
 LOOKAHEAD = {
-    "upset_4h":  4  * 12,   # 48 steps
-    "upset_12h": 12 * 12,   # 144 steps
-    "upset_24h": 24 * 12,   # 288 steps
+    "upset_4h":  4  * 12,   # window [t+2h, t+6h]
+    "upset_12h": 12 * 12,   # window [t+2h, t+14h]
+    "upset_24h": 24 * 12,   # window [t+2h, t+26h]
 }
 
 # COMMAND ----------
@@ -87,14 +95,14 @@ labelled = (
 # COMMAND ----------
 # MAGIC %md ## Step 3: Create forward-looking labels
 # MAGIC
-# MAGIC For each timestamp t, `upset_Xh = 1` if any row in [t+1, t+X] has `is_upset = 1`.
-# MAGIC We use a **lead window** (look forward) — no data leakage risk since labels are
-# MAGIC derived from the same tag used only as the target, not as a feature.
+# MAGIC For each timestamp t, `upset_Xh = 1` if any row in [t+MIN_LEAD, t+MIN_LEAD+X]
+# MAGIC has `is_upset = 1`. The window starts at MIN_LEAD_STEPS (2h) ahead, not at t+0,
+# MAGIC so the model must predict upcoming upsets rather than detect ongoing ones.
 
 # COMMAND ----------
 
 for label_col, n_steps in LOOKAHEAD.items():
-    w_forward = Window.orderBy("ts").rowsBetween(1, n_steps)
+    w_forward = Window.orderBy("ts").rowsBetween(MIN_LEAD_STEPS, MIN_LEAD_STEPS + n_steps)
     labelled = labelled.withColumn(
         label_col,
         F.max("is_upset").over(w_forward)

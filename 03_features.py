@@ -48,6 +48,10 @@ SENSOR_COLS = [
     "dhp_w12_006", "dhp_w12_010", "dhp_w12_013", "dhp_w12_016",
     "dht_w12_002", "dht_w12_003", "dht_w12_004", "dht_w12_005",
     "dht_w12_006", "dht_w12_010", "dht_w12_013", "dht_w12_016",
+    # Topside machinery — G-21 rotating equipment (speed + vibration)
+    "mach_spd_g21a", "mach_spd_g21b",
+    "mach_vib_183", "mach_vib_186", "mach_vib_190", "mach_vib_191",
+    "mach_vib_283", "mach_vib_286", "mach_vib_290", "mach_vib_291",
 ]
 
 # Quality columns
@@ -99,6 +103,10 @@ ROC_COLS = [
     "flow_hc_315", "flow_hc_914", "flow_hc_944",
     "dhp_w12_002", "dhp_w12_004", "dhp_w12_006",
     "dht_w12_002", "dht_w12_004",
+    # Machinery: speed rate-of-change captures acceleration/instability events
+    "mach_spd_g21a", "mach_spd_g21b",
+    # Vibration rate-of-change captures sudden bearing deterioration
+    "mach_vib_183", "mach_vib_283",
 ]
 
 for col in ROC_COLS:
