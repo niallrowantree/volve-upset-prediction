@@ -161,7 +161,9 @@ resampled = (
     )
     .groupBy("ts", "tag")
     .agg(
-        F.mean("Value").alias("value"),
+        # Only average good-quality readings — bad-quality rows (Status != 192)
+        # carry PI sentinel values like -999 which must not be averaged in.
+        F.mean(F.when(F.col("good_quality") == 1, F.col("Value"))).alias("value"),
         F.mean("good_quality").alias("quality_frac"),  # 1.0 = all readings good
         F.count("*").alias("n_raw_readings"),
     )

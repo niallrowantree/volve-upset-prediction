@@ -50,6 +50,12 @@ pdf = df_spark.orderBy("ts").toPandas()
 pdf = pdf.sort_values("ts").reset_index(drop=True)
 print(f"Pulled to pandas: {len(pdf):,} rows × {len(pdf.columns)} columns")
 
+# Capture the full list of raw input columns now, before any feature engineering.
+# Used at the end to drop ALL original sensor/label columns regardless of what
+# ends up in SENSOR_COLS — prevents removed sensors leaking as raw features.
+KEEP_COLS = {'ts', 'is_upset', 'upset_4h', 'upset_12h', 'upset_24h', 'baseline_7d'}
+RAW_INPUT_COLS = [c for c in pdf.columns if c not in KEEP_COLS]
+
 # COMMAND ----------
 # MAGIC %md ## Define feature columns and rolling windows
 
@@ -59,10 +65,12 @@ print(f"Pulled to pandas: {len(pdf):,} rows × {len(pdf.columns)} columns")
 SENSOR_COLS = [
     "flow_hc_315", "flow_hc_914", "flow_hc_944",
     "flow_hc_315_corr", "flow_wat_315",
-    "dhp_w12_002", "dhp_w12_003", "dhp_w12_004", "dhp_w12_005",
-    "dhp_w12_006", "dhp_w12_010", "dhp_w12_013", "dhp_w12_016",
-    "dht_w12_002", "dht_w12_003", "dht_w12_004", "dht_w12_005",
-    "dht_w12_006", "dht_w12_010", "dht_w12_013", "dht_w12_016",
+    # Downhole sensors — SLB gauge suite:
+    # Only dhp_016 has real varying data through the test period.
+    # dhp_004/dht_004 (same gauge) were active in training but die in Jan 2021.
+    # dhp_002/dht_002 are stuck constants; 003/005/006/010/013 are all zeros.
+    # dht_016 shows consistently negative impossible values — broken throughout.
+    "dhp_w12_016",
     # Topside machinery — G-21 rotating equipment (speed + vibration)
     "mach_spd_g21a", "mach_spd_g21b",
     "mach_vib_183", "mach_vib_186", "mach_vib_190", "mach_vib_191",
@@ -115,8 +123,7 @@ print(f"After rolling stats: {len(pdf.columns)} columns")
 
 ROC_COLS = [
     "flow_hc_315", "flow_hc_914", "flow_hc_944",
-    "dhp_w12_002", "dhp_w12_004", "dhp_w12_006",
-    "dht_w12_002", "dht_w12_004",
+    "dhp_w12_016",
     # Machinery: speed rate-of-change captures acceleration/instability events
     "mach_spd_g21a", "mach_spd_g21b",
     # Vibration rate-of-change captures sudden bearing deterioration
@@ -181,7 +188,6 @@ else:
 ts = pd.to_datetime(pdf["ts"])
 pdf["hour_of_day"] = ts.dt.hour
 pdf["day_of_week"]  = ts.dt.dayofweek   # 0=Mon, 6=Sun (pandas convention)
-pdf["month"]        = ts.dt.month
 pdf["is_weekend"]   = ts.dt.dayofweek.isin([5, 6]).astype(int)
 
 # COMMAND ----------
@@ -206,8 +212,10 @@ pdf = pdf[pd.to_datetime(pdf["ts"]) >= warmup_cutoff].copy()
 # Drop rows where the target label is null
 pdf = pdf.dropna(subset=[TARGET_LABEL])
 
-# Drop raw sensor columns — model only sees engineered features
-raw_cols_to_drop = [c for c in SENSOR_COLS + QUALITY_COLS if c in pdf.columns]
+# Drop ALL original sensor columns — model only sees engineered features.
+# Using RAW_INPUT_COLS (captured before feature engineering) ensures every
+# raw sensor column is removed, including sensors not in SENSOR_COLS.
+raw_cols_to_drop = [c for c in RAW_INPUT_COLS if c in pdf.columns]
 pdf = pdf.drop(columns=raw_cols_to_drop)
 
 print(f"Feature matrix: {len(pdf):,} rows × {len(pdf.columns)} columns")
