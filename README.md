@@ -1,12 +1,14 @@
 # Volve Production Upset Prediction
 
-Early warning model for production upsets on the Equinor Volve oil field, using PI historian sensor data from Databricks Unity Catalog.
+Early warning model for production upsets using PI historian sensor data from the Equinor Volve Data Village on Databricks Unity Catalog.
 
 ## Overview
 
-Uses 18 months of PI System time-series data (Nov 2019 – Apr 2021) from the Volve field to train an XGBoost classifier that predicts production upsets 2–14 hours ahead. The model is restricted to **independent signals** — downhole pressure/temperature sensors and topside rotating machinery — to provide genuine early warning rather than detection of already-in-progress events.
+Uses 18 months of PI System time-series data (Nov 2019 – Apr 2021) to train an XGBoost classifier that predicts production upsets 2–14 hours ahead. The model is restricted to **independent signals** — downhole pressure sensors and topside rotating machinery — to provide genuine early warning rather than detection of already-in-progress events.
 
-**Data source**: `equinor_asa_volve_data_village` catalog — Equinor's open Volve dataset, available on Databricks via the Data Marketplace.
+**Data source**: `equinor_asa_volve_data_village` catalog — Equinor's open dataset available on Databricks via the Data Marketplace.
+
+**Note on field identity**: Despite the catalog name, the PI historian data (path: `PI System Manager Sleipner/sensordata`) originates from the **Sleipner** field complex, not the Volve field. Volve reached COP in September 2016 and could not have produced data from 2019–2021. Sleipner A/B/T is an active Equinor gas/condensate field on the Norwegian shelf; the sensor timestamps and operational events (including the Feb–Mar 2021 12-day shutdown) reflect real Sleipner operations. The project retains the "Volve" naming convention used by the Databricks catalog.
 
 ## Project structure
 
