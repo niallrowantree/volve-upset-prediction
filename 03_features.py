@@ -92,17 +92,20 @@ print(f"Sensor columns present: {len(SENSOR_COLS)}")
 
 # COMMAND ----------
 
+# Collect all new columns in a dict, then concat once to avoid DataFrame fragmentation
+rolling_new = {}
 for col in SENSOR_COLS:
     for win_name, win_steps in WINDOWS.items():
         w = pdf[col].rolling(window=win_steps, min_periods=1)
-        pdf[f"{col}_{win_name}_mean"]  = w.mean()
-        pdf[f"{col}_{win_name}_std"]   = w.std()
-        pdf[f"{col}_{win_name}_min"]   = w.min()
-        pdf[f"{col}_{win_name}_max"]   = w.max()
-        pdf[f"{col}_{win_name}_range"] = (
-            pdf[f"{col}_{win_name}_max"] - pdf[f"{col}_{win_name}_min"]
-        )
+        col_min = w.min()
+        col_max = w.max()
+        rolling_new[f"{col}_{win_name}_mean"]  = w.mean()
+        rolling_new[f"{col}_{win_name}_std"]   = w.std()
+        rolling_new[f"{col}_{win_name}_min"]   = col_min
+        rolling_new[f"{col}_{win_name}_max"]   = col_max
+        rolling_new[f"{col}_{win_name}_range"] = col_max - col_min
 
+pdf = pd.concat([pdf, pd.DataFrame(rolling_new, index=pdf.index)], axis=1)
 print(f"After rolling stats: {len(pdf.columns)} columns")
 
 # COMMAND ----------
@@ -122,11 +125,13 @@ ROC_COLS = [
 
 ROC_COLS = [c for c in ROC_COLS if c in pdf.columns]
 
+roc_new = {}
 for col in ROC_COLS:
     for win_name, win_steps in [("30m", 6), ("2h", 24), ("6h", 72)]:
         lag_val = pdf[col].shift(win_steps)
-        pdf[f"{col}_roc_{win_name}"] = (pdf[col] - lag_val) / (lag_val.abs() + 1e-6)
+        roc_new[f"{col}_roc_{win_name}"] = (pdf[col] - lag_val) / (lag_val.abs() + 1e-6)
 
+pdf = pd.concat([pdf, pd.DataFrame(roc_new, index=pdf.index)], axis=1)
 print(f"After rate-of-change: {len(pdf.columns)} columns")
 
 # COMMAND ----------
