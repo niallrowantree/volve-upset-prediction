@@ -106,6 +106,18 @@ Each `.py` file is in Databricks notebook source format. Import via:
 
 The strongest independent predictors of upsets (initial run, without minimum lookahead gap) were downhole temperature sensors, particularly `dht_w12_004` and `dht_w12_016`, alongside downhole pressure variability (`dhp_w12_004_24h_std`, `dhp_spread`). The contribution of topside machinery features (mach_spd_g21a, mach_vib_*) is to be evaluated after re-running with the corrected label window.
 
+## A note on domain expertise
+
+The most consistent lesson across this project is that subject matter expertise is not optional — it is the difference between a technically sound model and a useful one.
+
+A dataset captures the observable state of an asset: pressures, flows, alarms, the decisions that got logged in a system. It does not capture why a shutdown was delayed, what the operations team knew about a degrading seal before it showed up in the data, or which sensor had been drifting for months and everyone on the platform knew to ignore. The Volve dataset is to an asset what a cave painting is to a hunt — a record of what happened, but silent on the reasoning, the feel, and the tacit knowledge that shaped it.
+
+This showed up repeatedly in practice: the PI historian silently injecting -999 sentinel values that no automated check would flag without knowing the physical range of the measurement; the calendar month feature that looked like genuine seasonality but turned out to be an artefact of a single scheduled 12-day shutdown; the decision to exclude surface flow meters from model features — which requires understanding that they measure the event, not its precursors. None of that comes from the data alone.
+
+GenAI can absorb PI tag catalogues, P&IDs, operational reports, and alarm logs faster than any human analyst — and it should. Capturing as much of this institutional knowledge as structured context will improve every model built on top of it. But it is not a substitute for the process engineer who has watched a compressor degrade or the operator who knows which valves hunt under certain conditions. The tacit knowledge — why decisions were made, what was felt, what was never written down — simply does not exist in any dataset.
+
+---
+
 ## Data licence
 
 Volve data is released by Equinor under the Equinor Open Data Licence. See `HRS and Terms and conditions for license to data - Volve.pdf` in the Volume for full terms.
